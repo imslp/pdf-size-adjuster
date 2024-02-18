@@ -52,18 +52,22 @@ def select_file():
     filepath = filedialog.askopenfilename(filetypes=(("PDF files", "*.pdf"),))
     if filepath:
         file_path_var.set(filepath)
+        # Automatically update the output file path when a new file is selected
+        outfilepattern = re.compile(r'\.pdf$', re.IGNORECASE)
+        if outfilepattern.search(filepath):
+            outputpath = outfilepattern.sub("-output.pdf", filepath)
+            output_file_path_var.set(outputpath)
+        else:
+            output_file_path_var.set(filepath.replace('.pdf', '-output.pdf'))
 
 def run_cpdf_command_thread():
     filepath = file_path_var.get()
+    outputpath = output_file_path_var.get()  # Use the output path from the output_file_path_var
     pagesize = page_size_var.get()
-    if filepath and pagesize:
+    if pagesize == "Other (e.g. 297mm 210mm)":
+        pagesize = custom_page_size_var.get()
+    if filepath and pagesize and outputpath:
         try:
-            outfilepattern = re.compile(r'\.pdf$', re.IGNORECASE)
-            if outfilepattern.search(filepath):
-                outputpath = outfilepattern.sub("-output.pdf", filepath)
-            else:
-                raise Exception("The file path does not end with '.pdf'")
-
             command = [download_cpdf(), '-scale-to-fit', pagesize, filepath, "-o", outputpath]
             subprocess.run(command, check=True, stderr=subprocess.PIPE, text=True)
             update_message_box(f"Success: Adjusted PDF saved to {os.path.basename(outputpath)}")
@@ -73,37 +77,20 @@ def run_cpdf_command_thread():
         except Exception as e:
             update_message_box(f"Error: {str(e)}")
     else:
-        update_message_box("Error: File or page size not given.")
+        update_message_box("Error: File, output path or page size not given.")
 
 def run_cpdf_command():
     threading.Thread(target=run_cpdf_command_thread).start()
 
-root = tk.Tk()
-root.title("PDF Size Adjuster")
-root.configure(padx=10, pady=10)
-
-root.grid_rowconfigure(0, weight=1)
-root.grid_rowconfigure(4, weight=1)
-
-file_path_var = tk.StringVar()
-page_size_var = tk.StringVar()
-page_size_var.set("a4portrait")
-
-tk.Label(root, text="PDF File:").grid(row=0, column=0, sticky='w')
-pdf_entry = tk.Entry(root, textvariable=file_path_var, state='disabled')
-pdf_entry.grid(row=0, column=1, sticky='ew', padx=(10, 10))
-tk.Button(root, text="Select", command=select_file).grid(row=0, column=2, sticky='ew')
-
-tk.Label(root, text="Page Size:").grid(row=1, column=0, sticky='w', pady=(10, 0))
-page_size_entry = tk.Entry(root, textvariable=page_size_var)
-page_size_entry.grid(row=1, column=1, columnspan=2, sticky='ew', padx=(10, 0), pady=(10, 0))
-
-root.columnconfigure(1, weight=1)
-
-tk.Button(root, text="Run", command=run_cpdf_command).grid(row=2, column=0, columnspan=3, sticky='ew', pady=(10, 0))
-
-message_box = tk.Text(root, height=4, state='disabled')
-message_box.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(10, 0))
+def update_page_size_option(*args):
+    if page_size_var.get() == "Other (e.g. 297mm 210mm)":
+        custom_page_size_entry.grid(row=3, column=1, columnspan=2, sticky='ew', padx=(10, 0), pady=(5, 0))
+        run_button.grid(row=4, column=0, columnspan=3, sticky='ew', pady=(10, 0))
+        message_box.grid(row=5, column=0, columnspan=3, sticky='ew', pady=(10, 0))
+    else:
+        custom_page_size_entry.grid_remove()
+        run_button.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(10, 0))
+        message_box.grid(row=4, column=0, columnspan=3, sticky='ew', pady=(10, 0))
 
 def update_message_box(message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -116,5 +103,44 @@ def update_message_box(message):
     message_box.insert(tk.END, formatted_message)
     message_box.see(tk.END)
     message_box.config(state='disabled')
+
+root = tk.Tk()
+root.title("PDF Size Adjuster")
+root.configure(padx=10, pady=10)
+
+root.grid_rowconfigure(0, weight=1)
+root.grid_rowconfigure(4, weight=1)
+
+file_path_var = tk.StringVar()
+output_file_path_var = tk.StringVar()
+page_size_var = tk.StringVar()
+page_size_var.set("a4portrait")
+custom_page_size_var = tk.StringVar()
+
+tk.Label(root, text="Input File:").grid(row=0, column=0, sticky='w')
+pdf_entry = tk.Entry(root, textvariable=file_path_var, state='disabled')
+pdf_entry.grid(row=0, column=1, sticky='ew', padx=(10, 10))
+tk.Button(root, text="Select", command=select_file).grid(row=0, column=2, sticky='ew')
+
+tk.Label(root, text="Output File:").grid(row=1, column=0, sticky='w', pady=(10, 0))
+output_file_entry = tk.Entry(root, textvariable=output_file_path_var)
+output_file_entry.grid(row=1, column=1, columnspan=2, sticky='ew', padx=(10, 0), pady=(10, 0))
+
+tk.Label(root, text="Page Size:").grid(row=2, column=0, sticky='w', pady=(10, 0))
+page_size_options = ["a4portrait", "a4landscape", "Other (e.g. 297mm 210mm)"]
+page_size_menu = tk.OptionMenu(root, page_size_var, *page_size_options, command=update_page_size_option)
+page_size_menu.grid(row=2, column=1, columnspan=2, sticky='ew', padx=(10, 0), pady=(10, 0))
+
+# Custom Page Size entry (hidden by default)
+custom_page_size_entry = tk.Entry(root, textvariable=custom_page_size_var)
+custom_page_size_entry.grid_remove()
+
+root.columnconfigure(1, weight=1)
+
+run_button = tk.Button(root, text="Run", command=run_cpdf_command)
+run_button.grid(row=3, column=0, columnspan=3, sticky='ew', pady=(10, 0))
+
+message_box = tk.Text(root, height=4, state='disabled')
+message_box.grid(row=4, column=0, columnspan=3, sticky='ew', pady=(10, 0))
 
 root.mainloop()
