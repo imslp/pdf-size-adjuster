@@ -4,10 +4,10 @@ PDF Size Adjuster is a simple GUI application built with Python and Tkinter that
 
 It automatic downloads `cpdf` from the CPDF binary repository, and supports Windows, MacOS, and Linux.
 
-# Prerequisites
+## Prerequisites
 
 Before running the application, ensure you have Python 3.x installed on your system. The application also requires the Tkinter library, which is included by default with most Python installations.
 
-# License
+## License
 
 MIT License
