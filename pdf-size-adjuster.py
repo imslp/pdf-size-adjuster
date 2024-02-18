@@ -66,7 +66,7 @@ def run_cpdf_command_thread():
 
             command = [download_cpdf(), '-scale-to-fit', pagesize, filepath, "-o", outputpath]
             subprocess.run(command, check=True, stderr=subprocess.PIPE, text=True)
-            update_message_box("Success: CPDF command executed successfully!")
+            update_message_box(f"Success: Adjusted PDF saved to {os.path.basename(outputpath)}")
         except subprocess.CalledProcessError as e:
             lasterrline = e.stderr.strip().split("\n")[-1] if e.stderr else "Unknown error."
             update_message_box(f"CPDF error: {lasterrline}")
